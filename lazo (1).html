@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>LAZO</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#241220;
+    --bg-deep:#170a15;
+    --surface:#2e1a2a;
+    --surface-hi:#3a2235;
+    --line:#4a2f43;
+    --coral:#ff6b5b;
+    --coral-deep:#e14f3f;
+    --gold:#ffc857;
+    --text:#fbf2ee;
+    --text-muted:#c9afc0;
+    --text-faint:#8a7085;
+    --ok:#7bc99b;
+    --font-display:'Fraunces', serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%;}
+  body{
+    background:radial-gradient(120% 100% at 50% 0%, #331b30 0%, var(--bg) 45%, var(--bg-deep) 100%);
+    color:var(--text);
+    font-family:var(--font-body);
+    display:flex; justify-content:center;
+    min-height:100vh;
+  }
+  @media (prefers-reduced-motion: reduce){ *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;} }
+
+  #shell{
+    width:100%; max-width:460px;
+    min-height:100vh;
+    display:flex; flex-direction:column;
+    position:relative;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent 200px);
+  }
+
+  /* ---------- topbar ---------- */
+  #topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 20px 10px;
+  }
+  .logo{
+    font-family:var(--font-display); font-weight:700; font-size:22px;
+    letter-spacing:0.14em;
+    display:flex; align-items:center; gap:8px;
+  }
+  .logo svg{width:22px; height:22px;}
+  .hilos-pill{
+    display:flex; align-items:center; gap:6px;
+    background:var(--surface-hi);
+    border:1px solid var(--line);
+    padding:6px 12px 6px 8px;
+    border-radius:999px;
+    font-family:var(--font-mono); font-size:13px; font-weight:700;
+    color:var(--gold);
+    cursor:pointer;
+  }
+  .hilos-pill svg{width:15px;height:15px;}
+
+  /* ---------- main scroll area ---------- */
+  #view{
+    flex:1;
+    overflow-y:auto;
+    padding:6px 20px 100px;
+    display:flex; flex-direction:column;
+  }
+  #view::-webkit-scrollbar{display:none;}
+
+  h1.screen-title{
+    font-family:var(--font-display); font-weight:600; font-size:26px;
+    margin:6px 0 2px;
+  }
+  p.screen-sub{ color:var(--text-muted); font-size:14.5px; margin:0 0 20px; line-height:1.5;}
+
+  /* ---------- bottom nav ---------- */
+  #nav{
+    position:sticky; bottom:0; left:0; right:0;
+    display:flex; justify-content:space-around;
+    background:rgba(23,10,21,0.85);
+    backdrop-filter:blur(14px);
+    border-top:1px solid var(--line);
+    padding:10px 6px calc(10px + env(safe-area-inset-bottom));
+    z-index:40;
+  }
+  .nav-btn{
+    background:none; border:none; color:var(--text-faint);
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    font-family:var(--font-body); font-size:10.5px; font-weight:600;
+    cursor:pointer; padding:4px 10px; position:relative;
+  }
+  .nav-btn svg{width:21px; height:21px;}
+  .nav-btn.active{color:var(--coral);}
+  .nav-badge{
+    position:absolute; top:-2px; right:2px;
+    background:var(--coral); color:white; font-size:9px; font-weight:700;
+    border-radius:999px; min-width:14px; height:14px; padding:0 3px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-body);
+  }
+
+  /* ---------- buttons ---------- */
+  .btn{
+    font-family:var(--font-body); font-weight:700; font-size:15px;
+    border:none; border-radius:14px; padding:15px 20px;
+    cursor:pointer; text-align:center;
+    transition:transform .12s ease;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{ background:linear-gradient(135deg, var(--coral), var(--coral-deep)); color:white; }
+  .btn-ghost{ background:var(--surface-hi); color:var(--text); border:1px solid var(--line); }
+  .btn-gold{ background:linear-gradient(135deg, var(--gold), #e0a83c); color:#2b1a08; }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; }
+  .btn-block{width:100%;}
+
+  /* ---------- form ---------- */
+  label{ font-size:12.5px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; display:block; margin:16px 0 7px;}
+  input[type=text], input[type=number], textarea, select{
+    width:100%; background:var(--surface); border:1px solid var(--line); color:var(--text);
+    border-radius:12px; padding:13px 14px; font-family:var(--font-body); font-size:15px;
+  }
+  input:focus, textarea:focus, select:focus{ outline:2px solid var(--coral); outline-offset:1px; }
+  textarea{ resize:none; min-height:90px; font-family:var(--font-body); }
+  .chip-row{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    background:var(--surface); border:1px solid var(--line); color:var(--text-muted);
+    padding:9px 15px; border-radius:999px; font-size:13.5px; font-weight:600; cursor:pointer;
+  }
+  .chip.selected{ background:var(--coral); border-color:var(--coral); color:white; }
+  .emoji-grid{ display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+  .emoji-opt{
+    aspect-ratio:1; border-radius:14px; display:flex; align-items:center; justify-content:center;
+    font-size:22px; background:var(--surface); border:2px solid var(--line); cursor:pointer;
+  }
+  .emoji-opt.selected{ border-color:var(--coral); background:var(--surface-hi); }
+
+  /* ---------- discover card ---------- */
+  #card-stack{ position:relative; flex:1; min-height:420px; margin-top:6px;}
+  .p-card{
+    position:absolute; inset:0;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:26px;
+    overflow:hidden;
+    display:flex; flex-direction:column;
+    box-shadow:0 20px 40px -12px rgba(0,0,0,0.5);
+    transition:transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s;
+    touch-action:pan-y;
+  }
+  .p-card .avatar-hero{
+    height:56%; display:flex; align-items:center; justify-content:center;
+    font-size:100px;
+  }
+  .p-card .p-info{ padding:18px 20px 20px; flex:1; display:flex; flex-direction:column;}
+  .p-name-row{ display:flex; align-items:baseline; gap:8px; font-family:var(--font-display); font-size:24px; font-weight:600;}
+  .p-meta{ color:var(--text-muted); font-size:13px; margin-top:2px; text-transform:capitalize;}
+  .p-bio{ color:var(--text); font-size:14.5px; line-height:1.5; margin-top:12px; flex:1;}
+  .swipe-actions{ display:flex; justify-content:center; gap:22px; padding:16px 0 4px;}
+  .round-btn{
+    width:58px; height:58px; border-radius:50%; border:1px solid var(--line);
+    background:var(--surface-hi); font-size:24px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .round-btn.like{ background:linear-gradient(135deg, var(--coral), var(--coral-deep)); border:none; }
+  .empty-state{ text-align:center; margin-top:60px; color:var(--text-muted); padding:0 10px;}
+  .empty-state .glyph{ font-size:42px; margin-bottom:10px; }
+
+  /* ---------- match overlay ---------- */
+  #match-overlay{
+    position:fixed; inset:0; background:rgba(10,4,9,0.9); backdrop-filter:blur(6px);
+    display:none; align-items:center; justify-content:center; flex-direction:column;
+    z-index:100; text-align:center; padding:30px;
+  }
+  #match-overlay.show{ display:flex; }
+  .match-avatars{ display:flex; align-items:center; justify-content:center; gap:0; margin-bottom:26px; position:relative; height:120px; width:220px;}
+  .match-avatars .av{ width:100px; height:100px; border-radius:50%; background:var(--surface-hi); border:3px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:46px; position:absolute;}
+  .match-avatars .av.left{ left:0; }
+  .match-avatars .av.right{ right:0; }
+  .match-title{ font-family:var(--font-display); font-weight:700; font-size:32px; color:var(--gold); margin:0;}
+  .match-sub{ color:var(--text-muted); margin:8px 0 26px; font-size:15px; }
+
+  /* ---------- matches / chat list ---------- */
+  .match-row{
+    display:flex; align-items:center; gap:14px; padding:13px 4px;
+    border-bottom:1px solid var(--line); cursor:pointer;
+  }
+  .match-row .av-sm{ width:52px; height:52px; border-radius:50%; background:var(--surface-hi); display:flex; align-items:center; justify-content:center; font-size:26px; flex-shrink:0;}
+  .match-row .mr-name{ font-weight:700; font-size:15.5px; }
+  .match-row .mr-last{ color:var(--text-faint); font-size:13px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:220px;}
+
+  /* ---------- chat ---------- */
+  #chat-screen{ display:flex; flex-direction:column; height:100%; }
+  #chat-header{ display:flex; align-items:center; gap:12px; padding:4px 0 14px; border-bottom:1px solid var(--line); margin-bottom:12px;}
+  #chat-header .back{ background:none; border:none; color:var(--text); font-size:20px; cursor:pointer; padding:4px;}
+  #chat-header .av-sm{ width:38px; height:38px; border-radius:50%; background:var(--surface-hi); display:flex; align-items:center; justify-content:center; font-size:19px;}
+  #chat-msgs{ flex:1; display:flex; flex-direction:column; gap:9px; padding-bottom:12px;}
+  .msg{ max-width:75%; padding:10px 14px; border-radius:16px; font-size:14.5px; line-height:1.4; }
+  .msg.me{ align-self:flex-end; background:linear-gradient(135deg, var(--coral), var(--coral-deep)); color:white; border-bottom-right-radius:4px;}
+  .msg.them{ align-self:flex-start; background:var(--surface-hi); border:1px solid var(--line); border-bottom-left-radius:4px;}
+  .msg-empty{ text-align:center; color:var(--text-faint); font-size:13.5px; margin-top:40px;}
+  #chat-input-row{ display:flex; gap:8px; align-items:center; padding:10px 0 4px; }
+  #chat-input-row input{ flex:1; }
+  #send-btn{ width:46px; height:46px; border-radius:50%; border:none; background:var(--coral); color:white; font-size:18px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;}
+  .cost-hint{ font-size:11px; color:var(--text-faint); text-align:right; margin-top:4px; font-family:var(--font-mono);}
+
+  /* ---------- hilos wallet ---------- */
+  .balance-card{
+    background:linear-gradient(135deg, var(--surface-hi), var(--surface));
+    border:1px solid var(--line); border-radius:20px; padding:26px 22px; text-align:center; margin-bottom:22px;
+  }
+  .balance-num{ font-family:var(--font-mono); font-weight:700; font-size:44px; color:var(--gold); }
+  .balance-label{ color:var(--text-muted); font-size:13px; letter-spacing:0.05em; text-transform:uppercase; margin-top:2px;}
+  .pack-grid{ display:flex; flex-direction:column; gap:10px; }
+  .pack-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 16px;
+  }
+  .pack-row .pk-name{ font-weight:700; font-size:14.5px;}
+  .pack-row .pk-hilos{ color:var(--gold); font-family:var(--font-mono); font-size:13px; margin-top:2px;}
+  .pack-row button{ font-family:var(--font-body); font-weight:700; font-size:13px; background:var(--surface-hi); border:1px solid var(--line); color:var(--text); padding:9px 14px; border-radius:10px; cursor:pointer;}
+
+  /* ---------- profile ---------- */
+  .profile-hero{ text-align:center; margin:10px 0 26px; }
+  .profile-hero .av-lg{ width:110px; height:110px; border-radius:50%; background:var(--surface-hi); border:2px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:52px; margin:0 auto 14px; }
+  .profile-hero h2{ font-family:var(--font-display); font-size:24px; margin:0; font-weight:600;}
+  .profile-hero .p-tag{ color:var(--text-muted); font-size:14px; margin-top:4px;}
+  .field-view{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:10px;}
+  .field-view .fv-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-faint); margin-bottom:4px;}
+  .field-view .fv-val{ font-size:14.5px; line-height:1.5;}
+
+  /* signature: lazo ribbon divider */
+  .ribbon-divider{ width:100%; height:34px; margin:4px 0 18px; }
+
+  .toast{
+    position:fixed; bottom:96px; left:50%; transform:translateX(-50%);
+    background:var(--surface-hi); border:1px solid var(--line); color:var(--text);
+    padding:11px 18px; border-radius:999px; font-size:13.5px; font-weight:600;
+    z-index:200; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
+    box-shadow:0 10px 24px rgba(0,0,0,0.4);
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(-6px); }
+
+  .code-box{
+    background:var(--surface); border:1px dashed var(--line); border-radius:14px;
+    padding:16px; text-align:center; margin-top:18px;
+  }
+  .code-box .code{ font-family:var(--font-mono); font-size:20px; font-weight:700; color:var(--gold); letter-spacing:0.08em; margin:8px 0;}
+</style>
+</head>
+<body>
+<div id="shell">
+
+  <div id="topbar">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M6 12c0-3 2-5 5-5s5 2 5 5-2 5-5 5-5-2-5-5Z" stroke="#ff6b5b" stroke-width="2"/><path d="M4 8c2 1 2 7 0 8M20 8c-2 1-2 7 0 8" stroke="#ffc857" stroke-width="2" stroke-linecap="round"/></svg>
+      LAZO
+    </div>
+    <div class="hilos-pill" onclick="goTo('hilos')">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#ffc857" stroke-width="2"/><path d="M8 12h8M12 8v8" stroke="#ffc857" stroke-width="2" stroke-linecap="round"/></svg>
+      <span id="hilos-count">--</span>
+    </div>
+  </div>
+
+  <div id="view"></div>
+
+  <div id="nav" style="display:none;">
+    <button class="nav-btn" data-tab="discover" onclick="goTo('discover')">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7.5-4.9-10-9.6C.5 7.6 3 4 6.7 4c2 0 3.6 1 5.3 3 1.7-2 3.3-3 5.3-3C21 4 23.5 7.6 22 11.4 19.5 16.1 12 21 12 21Z" stroke="currentColor" stroke-width="2"/></svg>
+      Descubrir
+    </button>
+    <button class="nav-btn" data-tab="matches" onclick="goTo('matches')">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="8" cy="9" r="3.2" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="9" r="3.2" stroke="currentColor" stroke-width="2"/><path d="M9.6 9c1.4 1.6 3.4 1.6 4.8 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M3 19c0-2.8 2.2-5 5-5M21 19c0-2.8-2.2-5-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Hilos
+      <span class="nav-badge" id="match-badge" style="display:none;">0</span>
+    </button>
+    <button class="nav-btn" data-tab="hilos" onclick="goTo('hilos')">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M8 12h8M12 8v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Monedero
+    </button>
+    <button class="nav-btn" data-tab="profile" onclick="goTo('profile')">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.3-3.6 4-5.5 7.5-5.5s6.2 1.9 7.5 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Perfil
+    </button>
+  </div>
+</div>
+
+<div id="match-overlay">
+  <div class="match-avatars">
+    <div class="av left" id="ma-left">🙂</div>
+    <div class="av right" id="ma-right">🙂</div>
+  </div>
+  <h2 class="match-title">¡Se ha atado un lazo!</h2>
+  <p class="match-sub" id="match-sub-text">Tú y ella se gustáis. Empezad a hablar.</p>
+  <button class="btn btn-primary btn-block" style="max-width:260px;" onclick="closeMatchOverlay(true)">Enviar el primer mensaje</button>
+  <button class="btn" style="background:none; color:var(--text-muted); margin-top:10px;" onclick="closeMatchOverlay(false)">Seguir descubriendo</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== CONFIG ===================== */
+const FREE_DAILY_HILOS = 15;
+const START_HILOS = 40;
+const MSG_COST_SHORT = 4;   // <= 300 chars
+const MSG_COST_LONG = 9;    // > 300 chars
+const FIRST_MSG_FREE = true;
+
+const EMOJI_OPTS = ["😊","😎","🌙","🌻","🔥","🎨","🌊","⚡","🍀","🎧","📚","☕","🏔️","🌴","✨","🦋","🥑","🎬"];
+const GENDERS = ["Mujer","Hombre","No binario"];
+const LOOKING = ["Relación","Amistad","Charla sin prisa","Aún no lo sé"];
+const SEED_BIOS = [
+  "Me pierdo bien en una conversación larga y un café flojo.",
+  "Coleccionando atardeceres y playlists a partes iguales.",
+  "Si hay montaña cerca, ahí estaré el domingo.",
+  "Cocino demasiado para una sola persona, se admiten cómplices.",
+  "Aprendiendo a tocar algo en la guitarra, de momento solo ruido.",
+  "Series a medias, libros a medias, ganas enteras.",
+  "Corro para pensar mejor y hablo para dejar de hacerlo.",
+  "Casa llena de plantas que sobreviven de milagro.",
+];
+const SEED_NAMES_F = ["Marta","Lucía","Elena","Sofía","Carla","Noa","Irene","Paula"];
+const SEED_NAMES_M = ["Diego","Mateo","Bruno","Álvaro","Hugo","Adrián","Nico","Marcos"];
+
+/* ===================== STATE ===================== */
+let ME = null;          // {id, name, age, gender, lookingFor, bio, emoji}
+let COINS = 0;
+let TAB = "discover";
+let discoverQueue = [];
+let currentChatId = null;
+let pendingChatAfterMatch = null;
+
+/* ===================== TELEGRAM DETECTION ===================== */
+let tg = null;
+try{
+  if(window.Telegram && window.Telegram.WebApp){
+    tg = window.Telegram.WebApp;
+    tg.ready(); tg.expand();
+  }
+}catch(e){}
+
+function telegramId(){
+  try{ return tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? "tg_"+tg.initDataUnsafe.user.id : null; }catch(e){ return null; }
+}
+
+/* ===================== FIREBASE (REST, sin SDK) ===================== */
+// 1. Ve a https://console.firebase.google.com -> crea un proyecto (gratis)
+// 2. Activa "Firestore Database" (modo producción) y "Web app" en Configuración del proyecto
+// 3. Copia aquí SOLO estos dos valores (los demás no hacen falta con REST):
+const firebaseConfig = {
+  apiKey: "AIzaSyAwWLxRfG4u-qCOcDKkGy72HTvGf3uT7Fg",
+  projectId: "lazo-app-548bc"
+};
+const DOCS_BASE = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
+const QUERY_URL = `${DOCS_BASE}:runQuery?key=${firebaseConfig.apiKey}`;
+
+function toFirestoreValue(v){
+  if(v === null || v === undefined) return { nullValue: null };
+  if(typeof v === 'string') return { stringValue: v };
+  if(typeof v === 'boolean') return { booleanValue: v };
+  if(typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if(Array.isArray(v)) return { arrayValue: { values: v.map(toFirestoreValue) } };
+  if(typeof v === 'object') return { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k,val]) => [k, toFirestoreValue(val)])) } };
+  return { stringValue: String(v) };
+}
+function fromFirestoreValue(fv){
+  if(!fv) return null;
+  if('nullValue' in fv) return null;
+  if('stringValue' in fv) return fv.stringValue;
+  if('booleanValue' in fv) return fv.booleanValue;
+  if('integerValue' in fv) return parseInt(fv.integerValue, 10);
+  if('doubleValue' in fv) return fv.doubleValue;
+  if('arrayValue' in fv) return (fv.arrayValue.values || []).map(fromFirestoreValue);
+  if('mapValue' in fv){
+    const out = {}; const f = fv.mapValue.fields || {};
+    for(const k in f) out[k] = fromFirestoreValue(f[k]);
+    return out;
+  }
+  return null;
+}
+
+/* ===================== STORAGE HELPERS (Firestore REST) ===================== */
+async function sGet(key){
+  try{
+    const res = await fetch(`${DOCS_BASE}/lazo/${encodeURIComponent(key)}?key=${firebaseConfig.apiKey}`);
+    if(res.status === 404) return null;
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    return data.fields && data.fields.v ? fromFirestoreValue(data.fields.v) : null;
+  }catch(e){ console.error('sGet failed', e); return null; }
+}
+async function sSet(key, val){
+  try{
+    const body = { fields: { v: toFirestoreValue(val), updatedAt: toFirestoreValue(Date.now()) } };
+    const res = await fetch(`${DOCS_BASE}/lazo/${encodeURIComponent(key)}?key=${firebaseConfig.apiKey}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    return res.ok;
+  }catch(e){ console.error('sSet failed', e); return false; }
+}
+async function sList(prefix){
+  try{
+    const startPath = `${DOCS_BASE.replace('https://firestore.googleapis.com/v1/','')}/lazo/${prefix}`;
+    const endPath = `${DOCS_BASE.replace('https://firestore.googleapis.com/v1/','')}/lazo/${prefix}\uf8ff`;
+    const body = {
+      structuredQuery: {
+        from: [{ collectionId: 'lazo' }],
+        where: {
+          compositeFilter: {
+            op: 'AND',
+            filters: [
+              { fieldFilter: { field: { fieldPath: '__name__' }, op: 'GREATER_THAN_OR_EQUAL', value: { referenceValue: startPath } } },
+              { fieldFilter: { field: { fieldPath: '__name__' }, op: 'LESS_THAN', value: { referenceValue: endPath } } }
+            ]
+          }
+        }
+      }
+    };
+    const res = await fetch(QUERY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    return rows.filter(r => r.document).map(r => r.document.name.split('/').pop());
+  }catch(e){ console.error('sList failed', e); return []; }
+}
+
+function uid(){ return 'u_' + Math.random().toString(36).slice(2,10); }
+
+/* ===================== TOAST ===================== */
+let toastTimer = null;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ===================== SEED DEMO PROFILES (once) ===================== */
+async function ensureSeedProfiles(){
+  const seeded = await sGet('lazo:seeded');
+  if(seeded) return;
+  for(let i=0;i<8;i++){
+    const isF = i % 2 === 0;
+    const id = 'seed_'+i;
+    const profile = {
+      id, name: isF ? SEED_NAMES_F[i%SEED_NAMES_F.length] : SEED_NAMES_M[i%SEED_NAMES_M.length],
+      age: 22 + Math.floor(Math.random()*12),
+      gender: isF ? "Mujer" : "Hombre",
+      lookingFor: LOOKING[Math.floor(Math.random()*LOOKING.length)],
+      bio: SEED_BIOS[i % SEED_BIOS.length],
+      emoji: EMOJI_OPTS[i % EMOJI_OPTS.length],
+      isSeed: true,
+      createdAt: Date.now()
+    };
+    await sSet('lazo:profile:'+id, profile);
+  }
+  await sSet('lazo:seeded', true);
+}
+
+/* ===================== IDENTITY / SESSION ===================== */
+async function initIdentity(){
+  const tgId = telegramId();
+  if(tgId){
+    const existing = await sGet('lazo:profile:'+tgId);
+    if(existing){ ME = existing; }
+    return tgId;
+  }
+  return null; // web: handled via onboarding screen (create or resume with code)
+}
+
+async function loadCoins(){
+  const c = await sGet('lazo:coins:'+ME.id);
+  COINS = (c === null) ? START_HILOS : c;
+  if(c === null) await sSet('lazo:coins:'+ME.id, COINS);
+  document.getElementById('hilos-count').textContent = COINS;
+}
+async function spendCoins(n){
+  COINS -= n;
+  if(COINS < 0) COINS = 0;
+  await sSet('lazo:coins:'+ME.id, COINS);
+  document.getElementById('hilos-count').textContent = COINS;
+}
+async function addCoins(n){
+  COINS += n;
+  await sSet('lazo:coins:'+ME.id, COINS);
+  document.getElementById('hilos-count').textContent = COINS;
+}
+
+/* ===================== BOOTSTRAP ===================== */
+window.addEventListener('DOMContentLoaded', async () => {
+  await ensureSeedProfiles();
+  const tgId = await initIdentity();
+  if(ME){
+    await afterLogin();
+  } else {
+    renderOnboardingChoice();
+  }
+});
+
+async function afterLogin(){
+  document.getElementById('nav').style.display = 'flex';
+  await loadCoins();
+  await refreshMatchBadge();
+  goTo('discover');
+}
+
+/* ===================== ROUTER ===================== */
+function goTo(tab){
+  TAB = tab;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  const view = document.getElementById('view');
+  view.innerHTML = '';
+  if(tab === 'discover') renderDiscover();
+  else if(tab === 'matches') renderMatches();
+  else if(tab === 'hilos') renderHilos();
+  else if(tab === 'profile') renderProfile();
+}
+
+/* ===================== ONBOARDING (web, no telegram id) ===================== */
+function renderOnboardingChoice(){
+  const view = document.getElementById('view');
+  view.innerHTML = `
+    <h1 class="screen-title">Bienvenida a LAZO</h1>
+    <p class="screen-sub">Conexiones que se tejen despacio. Crea tu perfil o retoma el tuyo con tu código.</p>
+    <button class="btn btn-primary btn-block" onclick="renderCreateProfile()">Crear mi perfil</button>
+    <button class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="renderResumeCode()">Ya tengo cuenta</button>
+  `;
+}
+
+function renderResumeCode(){
+  const view = document.getElementById('view');
+  view.innerHTML = `
+    <h1 class="screen-title">Tu código</h1>
+    <p class="screen-sub">Introduce el código que guardaste al crear tu perfil.</p>
+    <input type="text" id="resume-code" placeholder="ej. u_9f3k2la1" autocapitalize="off" autocorrect="off">
+    <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="tryResume()">Entrar</button>
+    <button class="btn" style="background:none; color:var(--text-muted); margin-top:10px;" onclick="renderOnboardingChoice()">Volver</button>
+  `;
+}
+
+async function tryResume(){
+  const code = document.getElementById('resume-code').value.trim();
+  if(!code){ toast('Escribe tu código'); return; }
+  const p = await sGet('lazo:profile:'+code);
+  if(!p){ toast('No hemos encontrado ese código'); return; }
+  ME = p;
+  afterLogin();
+}
+
+function renderCreateProfile(){
+  const view = document.getElementById('view');
+  view.innerHTML = `
+    <h1 class="screen-title">Crea tu perfil</h1>
+    <p class="screen-sub">Solo lo esencial. Nada de esto es público hasta que lo publiques.</p>
+
+    <label>Cómo te llamas</label>
+    <input type="text" id="f-name" placeholder="Tu nombre">
+
+    <label>Edad</label>
+    <input type="number" id="f-age" placeholder="18+" min="18" max="99">
+
+    <label>Género</label>
+    <div class="chip-row" id="f-gender">${GENDERS.map(g=>`<div class="chip" data-v="${g}" onclick="selectChip('f-gender', this)">${g}</div>`).join('')}</div>
+
+    <label>Buscas</label>
+    <div class="chip-row" id="f-looking">${LOOKING.map(g=>`<div class="chip" data-v="${g}" onclick="selectChip('f-looking', this)">${g}</div>`).join('')}</div>
+
+    <label>Tu avatar</label>
+    <div class="emoji-grid" id="f-emoji">${EMOJI_OPTS.map(e=>`<div class="emoji-opt" data-v="${e}" onclick="selectChip('f-emoji', this)">${e}</div>`).join('')}</div>
+
+    <label>Sobre ti</label>
+    <textarea id="f-bio" maxlength="220" placeholder="Algo breve y real. Nada de plantillas."></textarea>
+
+    <button class="btn btn-primary btn-block" style="margin-top:22px;" onclick="submitProfile()">Publicar perfil</button>
+  `;
+}
+
+function selectChip(groupId, el){
+  document.querySelectorAll('#'+groupId+' > *').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function submitProfile(){
+  const name = document.getElementById('f-name').value.trim();
+  const age = parseInt(document.getElementById('f-age').value, 10);
+  const genderEl = document.querySelector('#f-gender .selected');
+  const lookingEl = document.querySelector('#f-looking .selected');
+  const emojiEl = document.querySelector('#f-emoji .selected');
+  const bio = document.getElementById('f-bio').value.trim();
+
+  if(!name || !age || age < 18 || !genderEl || !lookingEl || !emojiEl || !bio){
+    toast('Completa todos los campos (18+)');
+    return;
+  }
+
+  const id = telegramId() || uid();
+  ME = {
+    id, name, age, gender: genderEl.dataset.v, lookingFor: lookingEl.dataset.v,
+    bio, emoji: emojiEl.dataset.v, createdAt: Date.now()
+  };
+  await sSet('lazo:profile:'+id, ME);
+
+  if(!telegramId()){
+    // show recovery code for web users before entering the app
+    const view = document.getElementById('view');
+    view.innerHTML = `
+      <h1 class="screen-title">Perfil listo</h1>
+      <p class="screen-sub">Guarda este código: es la única forma de volver a entrar en este navegador.</p>
+      <div class="code-box">
+        <div style="font-size:12px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em;">Tu código LAZO</div>
+        <div class="code">${id}</div>
+      </div>
+      <button class="btn btn-primary btn-block" style="margin-top:24px;" onclick="afterLogin()">Ya lo he guardado, entrar</button>
+    `;
+  } else {
+    afterLogin();
+  }
+}
+
+/* ===================== DISCOVER ===================== */
+async function renderDiscover(){
+  const view = document.getElementById('view');
+  view.innerHTML = `
+    <h1 class="screen-title">Descubrir</h1>
+    <p class="screen-sub">Perfiles cerca de tus intereses. Desliza o usa los botones.</p>
+    <div id="card-stack"><div class="empty-state">Cargando…</div></div>
+  `;
+
+  const keys = await sList('lazo:profile:');
+  const swipedRaw = await sGet('lazo:swiped:'+ME.id);
+  const swiped = swipedRaw || [];
+  const candidates = [];
+  for(const k of keys){
+    const id = k.replace('lazo:profile:','');
+    if(id === ME.id) continue;
+    if(swiped.includes(id)) continue;
+    const p = await sGet(k);
+    if(p) candidates.push(p);
+  }
+  discoverQueue = candidates;
+  renderCardStack();
+}
+
+function renderCardStack(){
+  const stack = document.getElementById('card-stack');
+  if(!discoverQueue.length){
+    stack.innerHTML = `<div class="empty-state"><div class="glyph">🧵</div>Se acabaron los perfiles por ahora.<br>Vuelve más tarde para ver caras nuevas.</div>`;
+    return;
+  }
+  stack.innerHTML = '';
+  const visible = discoverQueue.slice(0,3).reverse();
+  visible.forEach((p, idx) => {
+    const isTop = idx === visible.length - 1;
+    const el = document.createElement('div');
+    el.className = 'p-card';
+    el.style.transform = `translateY(${(visible.length-1-idx)*8}px) scale(${1 - (visible.length-1-idx)*0.03})`;
+    el.style.zIndex = idx;
+    el.innerHTML = `
+      <div class="avatar-hero" style="background:linear-gradient(160deg, var(--surface-hi), var(--surface));">${p.emoji}</div>
+      <div class="p-info">
+        <div class="p-name-row">${p.name}, ${p.age}</div>
+        <div class="p-meta">${p.gender} · busca ${p.lookingFor.toLowerCase()}</div>
+        <div class="p-bio">${p.bio}</div>
+        <div class="swipe-actions">
+          <button class="round-btn" onclick="swipe('${p.id}', false)">✕</button>
+          <button class="round-btn like" onclick="swipe('${p.id}', true)">❤</button>
+        </div>
+      </div>
+    `;
+    if(isTop) enableDrag(el, p.id);
+    stack.appendChild(el);
+  });
+}
+
+function enableDrag(el, pid){
+  let startX=0, dx=0, dragging=false;
+  const start = (x) => { dragging=true; startX=x; el.style.transition='none'; };
+  const move = (x) => { if(!dragging) return; dx = x-startX; el.style.transform = `translateX(${dx}px) rotate(${dx/18}deg)`; };
+  const end = () => {
+    if(!dragging) return; dragging=false;
+    el.style.transition='transform .3s ease';
+    if(dx > 100){ el.style.transform = `translateX(600px) rotate(25deg)`; setTimeout(()=>swipe(pid, true), 200); }
+    else if(dx < -100){ el.style.transform = `translateX(-600px) rotate(-25deg)`; setTimeout(()=>swipe(pid, false), 200); }
+    else { el.style.transform = 'translateX(0) rotate(0)'; }
+    dx = 0;
+  };
+  el.addEventListener('mousedown', e => start(e.clientX));
+  window.addEventListener('mousemove', e => move(e.clientX));
+  window.addEventListener('mouseup', end);
+  el.addEventListener('touchstart', e => start(e.touches[0].clientX), {passive:true});
+  el.addEventListener('touchmove', e => move(e.touches[0].clientX), {passive:true});
+  el.addEventListener('touchend', end);
+}
+
+async function swipe(pid, liked){
+  discoverQueue = discoverQueue.filter(p => p.id !== pid);
+  const swiped = (await sGet('lazo:swiped:'+ME.id)) || [];
+  if(!swiped.includes(pid)){ swiped.push(pid); await sSet('lazo:swiped:'+ME.id, swiped); }
+
+  if(liked){
+    await sSet('lazo:like:'+ME.id+'_'+pid, true);
+    // seed profiles auto-like back 70% of the time to demo the match flow
+    const target = await sGet('lazo:profile:'+pid);
+    let theyLikeMe = await sGet('lazo:like:'+pid+'_'+ME.id);
+    if(!theyLikeMe && target && target.isSeed && Math.random() < 0.7){
+      await sSet('lazo:like:'+pid+'_'+ME.id, true);
+      theyLikeMe = true;
+    }
+    if(theyLikeMe){
+      await createMatch(pid, target);
+    }
+  }
+  renderCardStack();
+}
+
+async function createMatch(otherId, otherProfile){
+  const myMatches = (await sGet('lazo:matches:'+ME.id)) || [];
+  if(!myMatches.includes(otherId)){ myMatches.push(otherId); await sSet('lazo:matches:'+ME.id, myMatches); }
+  const theirMatches = (await sGet('lazo:matches:'+otherId)) || [];
+  if(!theirMatches.includes(ME.id)){ theirMatches.push(ME.id); await sSet('lazo:matches:'+otherId, theirMatches); }
+
+  document.getElementById('ma-left').textContent = ME.emoji;
+  document.getElementById('ma-right').textContent = otherProfile.emoji;
+  document.getElementById('match-sub-text').textContent = `Tú y ${otherProfile.name} os gustáis. Escribid cuando queráis.`;
+  pendingChatAfterMatch = otherId;
+  document.getElementById('match-overlay').classList.add('show');
+  refreshMatchBadge();
+}
+
+function closeMatchOverlay(openChat){
+  document.getElementById('match-overlay').classList.remove('show');
+  if(openChat && pendingChatAfterMatch){ openChat_(pendingChatAfterMatch); }
+  else { goTo('discover'); }
+  pendingChatAfterMatch = null;
+}
+
+async function refreshMatchBadge(){
+  const matches = (await sGet('lazo:matches:'+ME.id)) || [];
+  const badge = document.getElementById('match-badge');
+  if(matches.length){ badge.style.display='flex'; badge.textContent = matches.length; }
+  else { badge.style.display='none'; }
+}
+
+/* ===================== MATCHES / CHAT LIST ===================== */
+async function renderMatches(){
+  const view = document.getElementById('view');
+  view.innerHTML = `<h1 class="screen-title">Tus hilos</h1><p class="screen-sub">Cada match teje un hilo nuevo. Sigue tirando de él.</p><div id="match-list"></div>`;
+  const matches = (await sGet('lazo:matches:'+ME.id)) || [];
+  const listEl = document.getElementById('match-list');
+  if(!matches.length){
+    listEl.innerHTML = `<div class="empty-state"><div class="glyph">🎗️</div>Aún no tienes hilos.<br>Ve a Descubrir y da algún ❤.</div>`;
+    return;
+  }
+  listEl.innerHTML = '';
+  for(const otherId of matches){
+    const p = await sGet('lazo:profile:'+otherId);
+    if(!p) continue;
+    const chatKey = chatKeyFor(ME.id, otherId);
+    const msgs = (await sGet('lazo:chat:'+chatKey)) || [];
+    const last = msgs.length ? msgs[msgs.length-1] : null;
+    const row = document.createElement('div');
+    row.className = 'match-row';
+    row.onclick = () => openChat_(otherId);
+    row.innerHTML = `
+      <div class="av-sm">${p.emoji}</div>
+      <div>
+        <div class="mr-name">${p.name}</div>
+        <div class="mr-last">${last ? (last.from===ME.id ? 'Tú: ' : '') + escapeHtml(last.text) : 'Decid algo, ¡rompe el hielo!'}</div>
+      </div>
+    `;
+    listEl.appendChild(row);
+  }
+}
+
+function chatKeyFor(a,b){ return [a,b].sort().join('__'); }
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ===================== CHAT ===================== */
+async function openChat_(otherId){
+  currentChatId = otherId;
+  const other = await sGet('lazo:profile:'+otherId);
+  const view = document.getElementById('view');
+  view.innerHTML = `
+    <div id="chat-screen">
+      <div id="chat-header">
+        <button class="back" onclick="goTo('matches')">←</button>
+        <div class="av-sm">${other.emoji}</div>
+        <div style="font-weight:700; font-size:15.5px;">${other.name}</div>
+      </div>
+      <div id="chat-msgs"></div>
+      <div style="flex:1;"></div>
+      <div id="chat-input-row">
+        <input type="text" id="chat-input" placeholder="Escribe algo bonito…" maxlength="500">
+        <button id="send-btn" onclick="sendMessage()">➤</button>
+      </div>
+      <div class="cost-hint" id="cost-hint"></div>
+    </div>
+  `;
+  await renderChatMessages();
+  updateCostHint();
+  document.getElementById('chat-input').addEventListener('input', updateCostHint);
+  document.getElementById('chat-input').addEventListener('keydown', e => { if(e.key==='Enter') sendMessage(); });
+}
+
+async function renderChatMessages(){
+  const chatKey = chatKeyFor(ME.id, currentChatId);
+  const msgs = (await sGet('lazo:chat:'+chatKey)) || [];
+  const box = document.getElementById('chat-msgs');
+  if(!msgs.length){
+    box.innerHTML = `<div class="msg-empty">Ningún mensaje todavía.<br>El primero siempre va por libre.</div>`;
+    return;
+  }
+  box.innerHTML = msgs.map(m => `<div class="msg ${m.from===ME.id?'me':'them'}">${escapeHtml(m.text)}</div>`).join('');
+}
+
+function updateCostHint(){
+  const val = document.getElementById('chat-input').value;
+  const hint = document.getElementById('cost-hint');
+  const cost = val.length > 300 ? MSG_COST_LONG : MSG_COST_SHORT;
+  hint.textContent = `Coste: ${cost} hilos · Tienes ${COINS}`;
+}
+
+async function sendMessage(){
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text) return;
+
+  const chatKey = chatKeyFor(ME.id, currentChatId);
+  const msgs = (await sGet('lazo:chat:'+chatKey)) || [];
+  const isFirstFromMe = FIRST_MSG_FREE && !msgs.some(m => m.from === ME.id);
+  const cost = text.length > 300 ? MSG_COST_LONG : MSG_COST_SHORT;
+
+  if(!isFirstFromMe && COINS < cost){
+    toast('No te quedan hilos suficientes. Visita el monedero.');
+    return;
+  }
+  if(!isFirstFromMe) await spendCoins(cost);
+
+  msgs.push({from: ME.id, text, ts: Date.now()});
+  await sSet('lazo:chat:'+chatKey, msgs);
+  input.value = '';
+  updateCostHint();
+  await renderChatMessages();
+  maybeAutoReply(chatKey);
+}
+
+async function maybeAutoReply(chatKey){
+  const other = await sGet('lazo:profile:'+currentChatId);
+  if(!other || !other.isSeed) return;
+  const replies = [
+    "Jaja me ha hecho gracia eso 😄",
+    "Cuéntame más, tengo curiosidad.",
+    "Totalmente de acuerdo contigo.",
+    "¿Y tú qué sueles hacer los findes?",
+    "Qué buen plan, me apunto mentalmente.",
+    "No me lo esperaba, me gusta.",
+  ];
+  setTimeout(async () => {
+    const msgs = (await sGet('lazo:chat:'+chatKey)) || [];
+    msgs.push({from: other.id, text: replies[Math.floor(Math.random()*replies.length)], ts: Date.now()});
+    await sSet('lazo:chat:'+chatKey, msgs);
+    if(currentChatId === other.id) renderChatMessages();
+  }, 1100 + Math.random()*900);
+}
+
+/* ===================== HILOS WALLET ===================== */
+async function renderHilos(){
+  const view = document.getElementById('view');
+  const lastClaim = await sGet('lazo:lastclaim:'+ME.id);
+  const canClaim = !lastClaim || (Date.now() - lastClaim) > 24*60*60*1000;
+  view.innerHTML = `
+    <h1 class="screen-title">Monedero</h1>
+    <p class="screen-sub">Los hilos abren conversación. Un mensaje corto cuesta ${MSG_COST_SHORT}, uno largo ${MSG_COST_LONG}. El primer mensaje de cada match es gratis.</p>
+    <div class="balance-card">
+      <div class="balance-num">${COINS}</div>
+      <div class="balance-label">Hilos disponibles</div>
+    </div>
+    <button class="btn btn-gold btn-block" id="claim-btn" ${canClaim?'':'disabled'} onclick="claimDaily()">
+      ${canClaim ? `Reclamar ${FREE_DAILY_HILOS} hilos gratis de hoy` : 'Ya reclamaste tus hilos de hoy'}
+    </button>
+
+    <label style="margin-top:26px;">Comprar más (demo)</label>
+    <div class="pack-grid">
+      <div class="pack-row"><div><div class="pk-name">Bolsillo</div><div class="pk-hilos">30 hilos</div></div><button onclick="buyPack(30)">Simular compra</button></div>
+      <div class="pack-row"><div><div class="pk-name">Carrete</div><div class="pk-hilos">80 hilos</div></div><button onclick="buyPack(80)">Simular compra</button></div>
+      <div class="pack-row"><div><div class="pk-name">Ovillo</div><div class="pk-hilos">200 hilos</div></div><button onclick="buyPack(200)">Simular compra</button></div>
+    </div>
+    <p style="color:var(--text-faint); font-size:12px; margin-top:16px;">Este monedero es una simulación de demostración — no se procesan pagos reales.</p>
+  `;
+}
+
+async function claimDaily(){
+  await sSet('lazo:lastclaim:'+ME.id, Date.now());
+  await addCoins(FREE_DAILY_HILOS);
+  toast(`+${FREE_DAILY_HILOS} hilos añadidos`);
+  renderHilos();
+}
+async function buyPack(n){
+  await addCoins(n);
+  toast(`Compra simulada: +${n} hilos`);
+  renderHilos();
+}
+
+/* ===================== PROFILE ===================== */
+function renderProfile(){
+  const view = document.getElementById('view');
+  view.innerHTML = `
+    <div class="profile-hero">
+      <div class="av-lg">${ME.emoji}</div>
+      <h2>${ME.name}, ${ME.age}</h2>
+      <div class="p-tag">${ME.gender} · busca ${ME.lookingFor.toLowerCase()}</div>
+    </div>
+    <div class="field-view"><div class="fv-label">Sobre ti</div><div class="fv-val">${ME.bio}</div></div>
+    ${!telegramId() ? `<div class="field-view"><div class="fv-label">Tu código de acceso</div><div class="fv-val" style="font-family:var(--font-mono); color:var(--gold);">${ME.id}</div></div>` : ''}
+    <button class="btn btn-ghost btn-block" style="margin-top:18px;" onclick="location.reload()">Cerrar sesión</button>
+  `;
+}
+</script>
+</body>
+</html>
